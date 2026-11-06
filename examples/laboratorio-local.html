@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informe PyRecon — 127.0.0.1</title>
+<style>
+:root{--bg:#0f1419;--panel:#171e26;--line:#263140;--fg:#e6edf3;--muted:#8b98a5;--accent:#3ddc97;--warn:#f0b429;--bad:#ef5350}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.55;font-size:15px}
+main{max-width:1100px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:19px;margin:32px 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sub{color:var(--muted);font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card .num{font-size:26px;font-weight:700;color:var(--accent)}
+.card .lbl{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--line)}
+.b-open{color:var(--accent);border-color:rgba(61,220,151,.4)}
+.b-closed{color:var(--muted)}
+.b-filtered{color:var(--warn);border-color:rgba(240,180,41,.4)}
+.host{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:12px 0}
+.host h3{margin:0 0 4px;font-size:16px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.find{background:rgba(61,220,151,.07);border:1px solid rgba(61,220,151,.25);border-radius:10px;padding:14px}
+.find li{margin:4px 0}
+.foot{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
+.warn{color:var(--warn)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Informe de reconocimiento de red</h1>
+  <p class="sub">
+    Herramienta: <strong>PyRecon</strong> v1.0.0
+    &middot; Objetivo: <span class="mono">127.0.0.1</span>
+    
+  </p>
+  <p class="sub">
+    Inicio: 2026-11-06 03:46:42 &middot;
+    Fin: 2026-11-06 03:46:43 &middot;
+    Duración: 1.09 s
+  </p>
+
+  <div class="cards">
+    <div class="card"><div class="num">1</div><div class="lbl">Hosts evaluados</div></div>
+    <div class="card"><div class="num">1</div><div class="lbl">Hosts activos</div></div>
+    <div class="card"><div class="num">1</div><div class="lbl">Puertos abiertos</div></div>
+    <div class="card"><div class="num">2</div><div class="lbl">Hallazgos</div></div>
+  </div>
+
+  
+  <h2>Hallazgos</h2>
+  <div class="find"><ul><li>Host activo 127.0.0.1 con 1 puerto(s) abierto(s): 58856</li><li>Servicio http expuesto en 127.0.0.1:58856</li></ul></div>
+  
+
+  <h2>Detalle por host</h2>
+  
+  <div class="host">
+    <h3>127.0.0.1 <span class="sub mono">(127.0.0.1)</span></h3>
+    
+    
+    <table>
+      <thead><tr><th>Puerto</th><th>Estado</th><th>Servicio</th><th>Banner</th><th>ms</th></tr></thead>
+      <tbody>
+      
+        <tr>
+          <td class="mono">58856/tcp</td>
+          <td><span class="badge b-open">open</span></td>
+          <td>http</td>
+          <td class="mono">HTTP/1.0 200 OK</td>
+          <td class="mono">0.57</td>
+        </tr>
+      
+      </tbody>
+    </table>
+    
+  </div>
+  
+
+  <div class="foot">
+    <p>Generado por PyRecon v1.0.0. Informe generado con fines de
+    auditoría autorizada. No incluye datos personales ni credenciales.</p>
+  </div>
+</main>
+</body>
+</html>
