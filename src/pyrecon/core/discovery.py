@@ -11,6 +11,7 @@ import asyncio
 from pyrecon.config import ScanConfig
 from pyrecon.core.portscan import scan_port
 from pyrecon.core.ratelimit import RateLimiter
+from pyrecon.exceptions import ValidationError
 from pyrecon.utils.logger import get_logger
 
 _logger = get_logger("core.discovery")
@@ -38,16 +39,14 @@ async def discover_hosts(
 ) -> list[str]:
     """Descubre qué direcciones de la lista están activas.
 
-    El número de direcciones se limita con ``config.max_hosts`` para evitar
-    escaneos masivos accidentales.
+    El número de direcciones se valida antes de sondear: si se supera
+    ``config.max_hosts`` se rechaza con error en lugar de truncar en silencio.
     """
     if len(targets) > config.max_hosts:
-        _logger.warning(
-            "el objetivo se expande a %d direcciones; se limita a %d",
-            len(targets),
-            config.max_hosts,
+        raise ValidationError(
+            f"el objetivo se expande a {len(targets)} direcciones y supera el límite de "
+            f"{config.max_hosts}. Reduce el ámbito o aumenta --max-hosts."
         )
-        targets = targets[: config.max_hosts]
 
     ports = probe_ports if probe_ports is not None else config.probe_ports
     semaphore = asyncio.Semaphore(config.concurrency)

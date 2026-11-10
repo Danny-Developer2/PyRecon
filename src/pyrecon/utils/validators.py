@@ -7,21 +7,30 @@ from typing import Any
 
 from pyrecon.exceptions import AuthorizationError, ValidationError
 from pyrecon.models import Scope
-from pyrecon.utils.network import expand_target, is_target_in_scope
+from pyrecon.utils.network import (
+    MAX_NETWORK_ADDRESSES,
+    expand_target,
+    is_target_in_scope,
+    validate_network_prefix,
+)
 
 
-def validate_target(target: str, max_hosts: int = 4096) -> str:
-    """Valida que el objetivo tenga formato correcto.
+def validate_target(target: str, max_hosts: int = MAX_NETWORK_ADDRESSES) -> str:
+    """Valida que el objetivo tenga formato correcto y tamaño permitido.
+
+    Acepta una IP, un rango CIDR /23 o /24, o un dominio. Cualquier otro tamaño de
+    red se rechaza con error explícito.
 
     Returns:
         El objetivo normalizado.
 
     Raises:
-        ValidationError: Si el objetivo no es una IP, CIDR o dominio válido.
+        ValidationError: Si el objetivo no es una IP, CIDR /23 o /24, o dominio válido.
     """
     normalized = target.strip()
     if not normalized:
-        raise ValidationError("debes indicar un objetivo (IP, rango CIDR o dominio)")
+        raise ValidationError("debes indicar un objetivo (IP, rango CIDR /23 o /24, o dominio)")
+    validate_network_prefix(normalized)
     try:
         expand_target(normalized, limit=max_hosts)
     except ValidationError:

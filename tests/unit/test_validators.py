@@ -18,11 +18,16 @@ from pyrecon.utils.validators import (
 
 
 class TestValidateTarget:
-    @pytest.mark.parametrize("target", ["127.0.0.1", "10.0.0.0/30", "ejemplo.com"])
+    @pytest.mark.parametrize(
+        "target", ["127.0.0.1", "192.168.1.0/24", "192.168.0.0/23", "ejemplo.com"]
+    )
     def test_objetivos_validos(self, target):
         assert validate_target(target) == target
 
-    @pytest.mark.parametrize("target", ["", "   ", "no es valido!"])
+    @pytest.mark.parametrize(
+        "target",
+        ["", "   ", "no es valido!", "10.0.0.0/30", "10.0.0.0/22", "10.0.0.0/16"],
+    )
     def test_objetivos_invalidos(self, target):
         with pytest.raises(ValidationError):
             validate_target(target)

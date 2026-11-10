@@ -85,7 +85,7 @@ class TestScannerCompleto:
         assert resultado.hosts_up == 1
         assert resultado.total_open_ports == 1
         assert resultado.statistics["hosts_evaluated"] == 1
-        assert any("http" in f for f in resultado.findings)
+        assert any("http" in f.message for f in resultado.findings)
 
     async def test_analisis_sin_hosts_activos(self):
         config = ScanConfig(

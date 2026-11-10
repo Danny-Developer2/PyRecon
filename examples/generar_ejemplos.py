@@ -6,7 +6,6 @@ Ejecutar con el entorno virtual activo:
 
 from __future__ import annotations
 
-import asyncio
 import subprocess
 import sys
 import threading
@@ -47,7 +46,7 @@ def main() -> int:
     base = ["scan", "127.0.0.1", "--ports", str(port), "--confirm-authorized"]
 
     try:
-        for fmt in ("json", "csv", "html"):
+        for fmt in ("json", "csv", "html", "pdf"):
             destino = BASE / f"laboratorio-local.{fmt}"
             subprocess.run(
                 cli + base + ["--output", str(destino), "--format", fmt],

@@ -1,2 +1,2 @@
 host,resolved_ip,host_state,port,protocol,port_state,service,banner,response_time_ms,scan_started_at,scan_finished_at
-127.0.0.1,127.0.0.1,up,58856,tcp,open,http,HTTP/1.0 200 OK,0.48,2026-11-06T03:46:40.339616+00:00,2026-11-06T03:46:41.421277+00:00
+127.0.0.1,127.0.0.1,up,60033,tcp,open,http,HTTP/1.0 200 OK,0.47,2026-11-10T01:58:37.095956+00:00,2026-11-10T01:58:38.123042+00:00

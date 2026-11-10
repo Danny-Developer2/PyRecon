@@ -22,6 +22,8 @@ htmlcov/
 results/
 reports/
 *.log
+*.pdf
+!examples/laboratorio-local.pdf
 
 # Sistema
 .DS_Store

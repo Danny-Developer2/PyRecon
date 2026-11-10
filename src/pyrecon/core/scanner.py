@@ -11,13 +11,17 @@ from pyrecon.core.dns_resolver import resolve_dns, reverse_dns
 from pyrecon.core.portscan import scan_host
 from pyrecon.core.ratelimit import RateLimiter
 from pyrecon.core.services import grab_banner, identify_service
+from pyrecon.core.severity import classify_port_severity
 from pyrecon.models import (
+    ConfirmationLevel,
     DnsRecord,
+    Finding,
     HostResult,
     HostState,
     PortResult,
     PortState,
     ScanResult,
+    Severity,
 )
 from pyrecon.utils.logger import get_logger
 from pyrecon.utils.network import expand_target, is_domain, resolve_host
@@ -144,18 +148,43 @@ class Scanner:
             dns_records=dns_records,
         )
 
-    def _build_findings(self, hosts: list[HostResult]) -> list[str]:
-        """Genera hallazgos textuales objetivos (sin valoraciones de riesgo)."""
-        findings: list[str] = []
+    def _build_findings(self, hosts: list[HostResult]) -> list[Finding]:
+        """Genera hallazgos con severidad y nivel de confirmación.
+
+        Las reglas son objetivas y se basan únicamente en el puerto y el servicio
+        identificados; no se infiere vulnerabilidad sin evidencia.
+        """
+        findings: list[Finding] = []
         for host in hosts:
             if not host.open_ports:
                 continue
             target = host.resolved_ip or host.host
             findings.append(
-                f"Host activo {target} con {len(host.open_ports)} puerto(s) abierto(s): "
-                + ", ".join(str(p) for p in host.open_ports)
+                Finding(
+                    message=(
+                        f"Host activo {target} con {len(host.open_ports)} puerto(s) abierto(s): "
+                        + ", ".join(str(p) for p in host.open_ports)
+                    ),
+                    severity=Severity.INFORMATIVO,
+                    confirmation_level=ConfirmationLevel.CONFIRMADO,
+                    target=target,
+                )
             )
             for port in host.ports:
-                if port.service:
-                    findings.append(f"Servicio {port.service} expuesto en {target}:{port.port}")
+                if port.state is not PortState.OPEN:
+                    continue
+                severity = classify_port_severity(port.port, port.service)
+                findings.append(
+                    Finding(
+                        message=(
+                            f"Servicio {port.service or 'desconocido'} expuesto "
+                            f"en {target}:{port.port}"
+                        ),
+                        severity=severity,
+                        confirmation_level=ConfirmationLevel.POTENCIAL,
+                        target=target,
+                        port=port.port,
+                        evidence=port.banner,
+                    )
+                )
         return findings

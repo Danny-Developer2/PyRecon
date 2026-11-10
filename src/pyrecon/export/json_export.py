@@ -17,7 +17,7 @@ def export_json(result: ScanResult, path: Path) -> Path:
     """
     payload = result.model_dump(mode="json")
     payload["schema"] = "pyrecon/scan-result"
-    payload["schema_version"] = 1
+    payload["schema_version"] = 2
 
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -25,6 +25,7 @@ def export_json(result: ScanResult, path: Path) -> Path:
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+        path.chmod(0o600)
     except OSError as exc:
         raise ExportError(f"no se pudo escribir el JSON en {path}: {exc}") from exc
     return path

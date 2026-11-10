@@ -62,6 +62,7 @@ def export_csv(result: ScanResult, path: Path) -> Path:
                             "scan_finished_at": result.finished_at.isoformat(),
                         }
                     )
+        path.chmod(0o600)
     except OSError as exc:
         raise ExportError(f"no se pudo escribir el CSV en {path}: {exc}") from exc
     return path

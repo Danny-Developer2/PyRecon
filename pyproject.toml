@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyrecon"
-version = "1.0.0"
+version = "1.1.0"
 description = "Herramienta profesional de reconocimiento de infraestructura de red en Python puro"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,6 +28,7 @@ dependencies = [
     "rich>=13.9,<14",
     "Jinja2>=3.1,<4",
     "dnspython>=2.7,<3",
+    "reportlab>=4,<6",
 ]
 
 [project.optional-dependencies]

@@ -14,7 +14,16 @@ from pyrecon.export import export_result
 from pyrecon.export.csv_export import export_csv
 from pyrecon.export.html_export import export_html
 from pyrecon.export.json_export import export_json
-from pyrecon.models import HostResult, HostState, PortResult, PortState, ScanResult
+from pyrecon.models import (
+    ConfirmationLevel,
+    Finding,
+    HostResult,
+    HostState,
+    PortResult,
+    PortState,
+    ScanResult,
+    Severity,
+)
 
 
 def _sample_result() -> ScanResult:
@@ -41,7 +50,14 @@ def _sample_result() -> ScanResult:
                 dns_records=[],
             )
         ],
-        findings=["Host activo 127.0.0.1 con 2 puerto(s) abierto(s): 22, 80"],
+        findings=[
+            Finding(
+                message="Host activo 127.0.0.1 con 2 puerto(s) abierto(s): 22, 80",
+                severity=Severity.INFORMATIVO,
+                confirmation_level=ConfirmationLevel.CONFIRMADO,
+                target="127.0.0.1",
+            )
+        ],
         statistics={"hosts_evaluated": 1, "hosts_up": 1, "open_ports": 2},
     )
 
@@ -105,7 +121,7 @@ class TestHtmlExport:
 
 
 class TestExportResult:
-    @pytest.mark.parametrize("fmt", ["json", "csv", "html"])
+    @pytest.mark.parametrize("fmt", ["json", "csv", "html", "pdf"])
     def test_formatos_soportados(self, tmp_path: Path, fmt: str):
         written = export_result(_sample_result(), tmp_path / "salida", fmt)
         assert written.exists()
@@ -117,4 +133,9 @@ class TestExportResult:
 
     def test_formato_no_soportado(self, tmp_path: Path):
         with pytest.raises(ExportError):
-            export_result(_sample_result(), tmp_path / "salida", "pdf")
+            export_result(_sample_result(), tmp_path / "salida", "docx")
+
+    def test_informes_con_permisos_restrictivos(self, tmp_path: Path):
+        for fmt in ("json", "csv", "html", "pdf"):
+            written = export_result(_sample_result(), tmp_path / f"informe-{fmt}", fmt)
+            assert written.stat().st_mode & 0o077 == 0, f"{fmt} no tiene permisos 0600"

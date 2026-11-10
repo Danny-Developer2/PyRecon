@@ -28,7 +28,11 @@ class NetworkError(PyReconError):
 
 
 class ExportError(PyReconError):
-    """Error al escribir un informe (JSON, CSV o HTML)."""
+    """Error al escribir un informe (JSON, CSV, HTML o PDF)."""
+
+
+class InventoryError(PyReconError):
+    """Error al abrir, leer o escribir el inventario de activos."""
 
 
 __all__ = [
@@ -38,4 +42,5 @@ __all__ = [
     "AuthorizationError",
     "NetworkError",
     "ExportError",
+    "InventoryError",
 ]

@@ -1,0 +1,9 @@
+{
+  "name": "Red principal de laboratorio",
+  "authorized_targets": [
+    "127.0.0.1/8",
+    "192.168.1.0/24",
+    "192.168.0.0/23"
+  ],
+  "notes": "Alcance de ejemplo. Autorización ficticia para el laboratorio local."
+}

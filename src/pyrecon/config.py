@@ -57,9 +57,9 @@ class ScanConfig(BaseModel):
     ports: list[int] = Field(default_factory=lambda: list(DEFAULT_PORTS))
     probe_ports: list[int] = Field(default_factory=lambda: list(DEFAULT_PROBE_PORTS))
     timeout: float = Field(default=1.0, ge=0.1, le=30.0)
-    concurrency: int = Field(default=100, ge=1, le=500)
+    concurrency: int = Field(default=50, ge=1, le=500)
     rate_limit: float | None = Field(
-        default=None, ge=1, le=1000, description="Peticiones por segundo (sin límite si es None)"
+        default=50.0, ge=1, le=1000, description="Peticiones por segundo"
     )
     max_hosts: int = Field(default=1024, ge=1, le=65536)
     resolve_dns: bool = True

@@ -35,6 +35,37 @@ class Protocol(StrEnum):
     TCP = "tcp"
 
 
+class Severity(StrEnum):
+    """Severidad de un hallazgo, según la metodología del departamento."""
+
+    CRITICO = "critico"
+    ALTO = "alto"
+    MEDIO = "medio"
+    BAJO = "bajo"
+    INFORMATIVO = "informativo"
+
+
+class ConfirmationLevel(StrEnum):
+    """Nivel de confirmación de un hallazgo."""
+
+    CONFIRMADO = "confirmado"
+    PROBABLE = "probable"
+    POTENCIAL = "potencial"
+
+
+class Finding(BaseModel):
+    """Hallazgo del análisis, con severidad y nivel de confirmación."""
+
+    model_config = ConfigDict(frozen=True)
+
+    message: str
+    severity: Severity = Severity.INFORMATIVO
+    confirmation_level: ConfirmationLevel = ConfirmationLevel.POTENCIAL
+    target: str | None = Field(default=None, description="Host o dirección afectada")
+    port: int | None = Field(default=None, ge=1, le=65535)
+    evidence: str | None = Field(default=None, max_length=1024)
+
+
 class PortResult(BaseModel):
     """Resultado del análisis de un puerto."""
 
@@ -79,7 +110,7 @@ class ScanResult(BaseModel):
     """Resultado completo de un análisis."""
 
     tool: str = "PyRecon"
-    version: str = "1.0.0"
+    version: str = "1.1.0"
     target: str
     scope: str | None = Field(default=None, description="Nombre del alcance autorizado")
     authorized: bool = Field(default=False, description="Autorización declarada")
@@ -87,7 +118,7 @@ class ScanResult(BaseModel):
     finished_at: datetime
     duration_seconds: float = Field(ge=0)
     hosts: list[HostResult] = Field(default_factory=list)
-    findings: list[str] = Field(default_factory=list)
+    findings: list[Finding] = Field(default_factory=list)
     statistics: dict[str, int] = Field(default_factory=dict)
 
     @field_validator("finished_at")
@@ -108,6 +139,14 @@ class ScanResult(BaseModel):
         """Número total de puertos abiertos."""
         return sum(len(h.open_ports) for h in self.hosts)
 
+    @property
+    def findings_by_severity(self) -> dict[str, int]:
+        """Número de hallazgos por severidad."""
+        counts = {severity.value: 0 for severity in Severity}
+        for finding in self.findings:
+            counts[finding.severity.value] += 1
+        return counts
+
 
 class Scope(BaseModel):
     """Declaración de alcance autorizado."""
@@ -124,4 +163,8 @@ class Scope(BaseModel):
         cleaned = [v.strip() for v in values if v and v.strip()]
         if not cleaned:
             raise ValueError("authorized_targets no puede quedar vacío")
+        from pyrecon.utils.network import validate_scope_target
+
+        for entry in cleaned:
+            validate_scope_target(entry)
         return cleaned

@@ -16,6 +16,14 @@ _DOMAIN_RE = re.compile(r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,6
 
 MAX_EXPANDED_HOSTS = 4096
 
+# Prefijos de red permitidos para un barrido. El CO autorizó /24 y /23.
+# Cualquier otro tamaño se rechaza con error explícito.
+MIN_NETWORK_PREFIX = 23
+MAX_NETWORK_PREFIX = 24
+
+# Número de direcciones de red que se pueden expandir como máximo.
+MAX_NETWORK_ADDRESSES = 512
+
 
 def is_ip_address(value: str) -> bool:
     """Indica si ``value`` es una dirección IPv4 o IPv6 válida."""
@@ -27,9 +35,12 @@ def is_ip_address(value: str) -> bool:
 
 
 def is_cidr(value: str) -> bool:
-    """Indica si ``value`` es un rango CIDR válido."""
+    """Indica si ``value`` es un rango CIDR válido (con prefijo explícito)."""
+    candidate = value.strip()
+    if "/" not in candidate:
+        return False
     try:
-        ipaddress.ip_network(value, strict=False)
+        ipaddress.ip_network(candidate, strict=False)
     except ValueError:
         return False
     return True
@@ -43,6 +54,65 @@ def is_domain(value: str) -> bool:
     if any(ch.isspace() for ch in candidate):
         return False
     return bool(_DOMAIN_RE.match(candidate))
+
+
+def validate_network_prefix(target: str) -> ipaddress.IPv4Network | None:
+    """Valida que un CIDR de objetivo esté dentro de los prefijos permitidos.
+
+    Args:
+        target: Objetivo en formato CIDR.
+
+    Returns:
+        La red IPv4 normalizada, o ``None`` si el objetivo no es un CIDR.
+
+    Raises:
+        ValidationError: Si el prefijo no es /23 ni /24, o si la red no es IPv4.
+    """
+    if not is_cidr(target):
+        return None
+    network = ipaddress.ip_network(target, strict=False)
+    if isinstance(network, ipaddress.IPv6Network):
+        raise ValidationError(
+            f"el objetivo {target!r} es IPv6. Solo se admiten redes IPv4 /23 o /24."
+        )
+    if network.prefixlen < MIN_NETWORK_PREFIX or network.prefixlen > MAX_NETWORK_PREFIX:
+        raise ValidationError(
+            f"el rango {target!r} tiene prefijo /{network.prefixlen}. "
+            f"Solo se admiten redes /23 (510 hosts) y /24 (254 hosts). "
+            "Reduce o amplía el objetivo según corresponda."
+        )
+    return network
+
+
+def validate_scope_target(authorized: str) -> None:
+    """Valida una entrada del alcance autorizado.
+
+    El alcance puede ser más amplio que el objetivo (un scope /8 o /16 es legítimo
+    porque autoriza redes /23 y /24 completas), pero no puede ser una subred más
+    pequeña que /24: no tendría sentido autorizar un único host como rango.
+
+    Raises:
+        ValidationError: Si la entrada no es IP, CIDR o dominio válido.
+    """
+    candidate = authorized.strip()
+    if not candidate:
+        raise ValidationError("el alcance contiene una entrada vacía")
+    if is_ip_address(candidate) or is_domain(candidate):
+        return
+    if is_cidr(candidate):
+        network = ipaddress.ip_network(candidate, strict=False)
+        if isinstance(network, ipaddress.IPv6Network):
+            raise ValidationError(f"el alcance {candidate!r} es IPv6. Solo se admiten redes IPv4.")
+        if network.prefixlen > MAX_NETWORK_PREFIX:
+            raise ValidationError(
+                f"el alcance {candidate!r} tiene prefijo /{network.prefixlen}. "
+                f"El alcance no puede ser más pequeño que /{MAX_NETWORK_PREFIX}."
+            )
+        return
+    raise ValidationError(
+        f"el alcance contiene una entrada no válida: {candidate!r}. "
+        "Debe ser una IP, un rango CIDR o un dominio."
+    )
 
 
 def expand_target(target: str, limit: int = MAX_EXPANDED_HOSTS) -> list[str]:
@@ -112,8 +182,18 @@ def _domain_matches(target: str, authorized: str) -> bool:
     return target == authorized or target.endswith("." + authorized)
 
 
+def _network_contains(authorized: ipaddress.IPv4Network, candidate: ipaddress.IPv4Network) -> bool:
+    """Indica si la red autorizada cubre por completo la red candidata."""
+    return candidate.subnet_of(authorized)
+
+
 def is_target_in_scope(target: str, scope: Scope) -> bool:
-    """Comprueba si un objetivo está dentro del alcance autorizado."""
+    """Comprueba si un objetivo está dentro del alcance autorizado.
+
+    Admite tres formas de objetivo: IP suelta, rango CIDR y dominio. Un CIDR se
+    considera dentro del alcance cuando la red autorizada lo contiene por completo
+    (incluido el caso de redes idénticas y el de subred contenida).
+    """
     candidate = target.strip()
 
     if is_ip_address(candidate):
@@ -124,6 +204,20 @@ def is_target_in_scope(target: str, scope: Scope) -> bool:
                 if address in network:
                     return True
             elif is_ip_address(authorized) and authorized == candidate:
+                return True
+        return False
+
+    if is_cidr(candidate):
+        candidate_network = ipaddress.ip_network(candidate, strict=False)
+        if isinstance(candidate_network, ipaddress.IPv6Network):
+            return False
+        for authorized in scope.authorized_targets:
+            if not is_cidr(authorized):
+                continue
+            authorized_network = ipaddress.ip_network(authorized, strict=False)
+            if isinstance(authorized_network, ipaddress.IPv6Network):
+                continue
+            if _network_contains(authorized_network, candidate_network):
                 return True
         return False
 

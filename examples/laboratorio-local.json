@@ -1,12 +1,12 @@
 {
   "tool": "PyRecon",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "target": "127.0.0.1",
   "scope": null,
   "authorized": true,
-  "started_at": "2026-11-06T03:46:38.344828Z",
-  "finished_at": "2026-11-06T03:46:39.379065Z",
-  "duration_seconds": 1.034,
+  "started_at": "2026-11-10T01:58:35.242902Z",
+  "finished_at": "2026-11-10T01:58:36.270927Z",
+  "duration_seconds": 1.028,
   "hosts": [
     {
       "host": "127.0.0.1",
@@ -14,12 +14,12 @@
       "state": "up",
       "ports": [
         {
-          "port": 58856,
+          "port": 60033,
           "protocol": "tcp",
           "state": "open",
           "service": "http",
           "banner": "HTTP/1.0 200 OK",
-          "response_time_ms": 0.4
+          "response_time_ms": 0.54
         }
       ],
       "dns_records": [],
@@ -27,8 +27,22 @@
     }
   ],
   "findings": [
-    "Host activo 127.0.0.1 con 1 puerto(s) abierto(s): 58856",
-    "Servicio http expuesto en 127.0.0.1:58856"
+    {
+      "message": "Host activo 127.0.0.1 con 1 puerto(s) abierto(s): 60033",
+      "severity": "informativo",
+      "confirmation_level": "confirmado",
+      "target": "127.0.0.1",
+      "port": null,
+      "evidence": null
+    },
+    {
+      "message": "Servicio http expuesto en 127.0.0.1:60033",
+      "severity": "bajo",
+      "confirmation_level": "potencial",
+      "target": "127.0.0.1",
+      "port": 60033,
+      "evidence": "HTTP/1.0 200 OK"
+    }
   ],
   "statistics": {
     "hosts_evaluated": 1,
@@ -36,5 +50,5 @@
     "open_ports": 1
   },
   "schema": "pyrecon/scan-result",
-  "schema_version": 1
+  "schema_version": 2
 }

@@ -116,7 +116,7 @@ def _print_summary(result: ScanResult) -> None:
 
 @app.command()
 def scan(
-    target: str = typer.Argument(..., help="IP, rango CIDR o dominio autorizado."),
+    target: str = typer.Argument(..., help="IP, rango CIDR /24 o /23, o dominio autorizado."),
     ports: str = typer.Option(
         ",".join(str(p) for p in DEFAULT_PORTS),
         "--ports",
@@ -124,9 +124,11 @@ def scan(
         help="Puertos o rangos, p. ej. '80,443' o '1-1024'.",
     ),
     timeout: float = typer.Option(1.0, "--timeout", "-t", help="Tiempo de espera por puerto."),
-    concurrency: int = typer.Option(100, "--concurrency", "-c", help="Conexiones simultáneas."),
+    concurrency: int = typer.Option(
+        50, "--concurrency", "-c", help="Conexiones simultáneas (1-500)."
+    ),
     rate_limit: float | None = typer.Option(
-        None, "--rate-limit", help="Peticiones por segundo (sin límite si se omite)."
+        50.0, "--rate-limit", help="Peticiones por segundo (1-1000)."
     ),
     scope_file: Path | None = typer.Option(
         None, "--scope", help="Fichero JSON con el alcance autorizado."
@@ -137,11 +139,14 @@ def scan(
     output: Path | None = typer.Option(
         None, "--output", "-o", help="Ruta del informe (se añade la extensión)."
     ),
-    format: str = typer.Option("json", "--format", "-f", help="Formato: json, csv o html."),
+    format: str = typer.Option("json", "--format", "-f", help="Formato: json, csv, html o pdf."),
     log_file: Path | None = typer.Option(None, "--log-file", help="Volcar el log a fichero."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Registro detallado."),
     no_banners: bool = typer.Option(False, "--no-banners", help="No obtener banners."),
     no_dns: bool = typer.Option(False, "--no-dns", help="No resolver DNS."),
+    inventory: Path | None = typer.Option(
+        None, "--inventory", help="Ruta de la base de datos del inventario (SQLite)."
+    ),
 ) -> None:
     """Ejecuta un análisis de red sobre el objetivo autorizado."""
     setup_logger("DEBUG" if verbose else "INFO", log_file)
@@ -175,6 +180,26 @@ def scan(
 
     _print_summary(result)
 
+    if inventory is not None:
+        try:
+            from pyrecon.core.inventory import Inventory
+
+            with Inventory(inventory) as store:
+                changes = store.diff(result)
+                execution_id = store.record(result)
+                store.record_changes(execution_id, changes)
+            if changes:
+                console.print(
+                    f"[yellow]Cambios respecto al barrido anterior:[/yellow] {len(changes)}"
+                )
+                for change in changes:
+                    console.print(f"  · [{change['kind']}] {change['detail']}")
+            else:
+                console.print("[green]Sin cambios respecto al barrido anterior.[/green]")
+            console.print(f"[green]Inventario actualizado:[/green] {inventory}")
+        except PyReconError as exc:
+            err_console.print(f"[red]Error al actualizar el inventario:[/red] {exc}")
+
     if output is not None:
         try:
             written = export_result(result, output, format)
@@ -203,6 +228,105 @@ def resolve(
     table.add_column("TTL", justify="right")
     for record in records:
         table.add_row(record.type, record.name, record.value, str(record.ttl or "—"))
+    console.print(table)
+
+
+@app.command()
+def inventory(
+    db: Path = typer.Option(
+        Path.home() / ".pyrecon" / "inventory.db",
+        "--db",
+        help="Ruta de la base de datos del inventario.",
+    ),
+    limit: int = typer.Option(20, "--limit", "-n", help="Número de ejecuciones a mostrar."),
+) -> None:
+    """Muestra el historial de ejecuciones y los activos detectados."""
+    from pyrecon.core.inventory import Inventory
+
+    setup_logger("WARNING")
+    try:
+        with Inventory(db) as store:
+            executions = store.list_executions(limit=limit)
+    except PyReconError as exc:
+        err_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if not executions:
+        console.print("[yellow]No hay ejecuciones registradas en el inventario.[/yellow]")
+        return
+
+    table = Table(title=f"Historial de ejecuciones ({db})")
+    table.add_column("ID", justify="right", style="dim")
+    table.add_column("Objetivo", style="cyan")
+    table.add_column("Alcance")
+    table.add_column("Hosts activos", justify="right")
+    table.add_column("Puertos", justify="right")
+    table.add_column("Fecha", style="dim")
+    for row in executions:
+        table.add_row(
+            str(row["id"]),
+            str(row["target"]),
+            str(row["scope"] or "—"),
+            str(row["hosts_up"]),
+            str(row["open_ports"]),
+            str(row["started_at"])[:19].replace("T", " "),
+        )
+    console.print(table)
+
+
+@app.command()
+def diff(
+    db: Path = typer.Option(
+        Path.home() / ".pyrecon" / "inventory.db",
+        "--db",
+        help="Ruta de la base de datos del inventario.",
+    ),
+) -> None:
+    """Compara la última ejecución con la anterior y muestra los cambios."""
+    from pyrecon.core.inventory import Inventory
+
+    setup_logger("WARNING")
+    try:
+        with Inventory(db) as store:
+            executions = store.list_executions(limit=2)
+            if len(executions) < 2:
+                console.print(
+                    "[yellow]Se necesitan al menos dos ejecuciones para comparar.[/yellow]"
+                )
+                return
+            previous_id = int(str(executions[1]["id"]))
+            previous_ports = store._ports_by_ip(previous_id)
+            latest_id = int(str(executions[0]["id"]))
+            latest_ports = store._ports_by_ip(latest_id)
+    except PyReconError as exc:
+        err_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    changes: list[tuple[str, str, str]] = []
+    previous_ips = set(previous_ports)
+    latest_ips = set(latest_ports)
+    for ip in sorted(latest_ips - previous_ips):
+        changes.append(("host_nuevo", ip, "Host no presente en el barrido anterior"))
+    for ip in sorted(previous_ips - latest_ips):
+        changes.append(("host_ausente", ip, "Host ya no está activo"))
+    for ip in sorted(latest_ips & previous_ips):
+        for port in sorted(latest_ports[ip] - previous_ports[ip]):
+            changes.append(("puerto_nuevo", ip, f"Puerto {port}/tcp abierto"))
+        for port in sorted(previous_ports[ip] - latest_ports[ip]):
+            changes.append(("puerto_cerrado", ip, f"Puerto {port}/tcp ya no abierto"))
+
+    if not changes:
+        console.print(
+            "[green]No se detectaron cambios entre la última y la anterior ejecución.[/green]"
+        )
+        return
+
+    table = Table(title=f"Cambios entre ejecuciones {latest_id} y {previous_id}")
+    table.add_column("Tipo", style="cyan")
+    table.add_column("Objetivo")
+    table.add_column("Detalle")
+    for kind, target, detail in changes:
+        table.add_row(kind, target, detail)
     console.print(table)
 
 
